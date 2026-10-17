@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><DefineConstants>LUMIO_PROFILE</DefineConstants><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
+  <ItemGroup><Compile Include="Program.cs" /><Compile Include="../../unity/com.lumio.profile/Runtime/NativeBridge.cs" Link="NativeBridge.cs" /></ItemGroup>
+</Project>

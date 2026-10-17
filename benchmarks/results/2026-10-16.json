@@ -1,0 +1,1154 @@
+{
+  "protocol": "lumio.benchmark-report/1",
+  "date": "2026-10-16",
+  "scope": "independent synthetic host only",
+  "testsPassed": 37,
+  "overall": "not-all-budgets-verified",
+  "runs": [
+    {
+      "id": "2026-10-16T12-15-48.522Z-node-throughput-before",
+      "runtime": "node",
+      "kind": "throughput",
+      "rounds": 64,
+      "sourceSnapshotsVerified": true,
+      "rawSha256": "5ca91eeb6650bb8e77e551ca45760e91b470e7d943d58744a676bef70749e3f2",
+      "sourceHashes": {
+        "packages/profile/src/core.ts": "2f4debaf30e2edd81f69deaf75c0ad3ba482e750ae4a40a5e382791669cbf59a",
+        "packages/profile/src/node.ts": "87677f294b2ae8063a890034464c6c1f33d0b8e81300bff649e9bdab4a1c4493",
+        "packages/profile/src/browser.ts": "e6b8d16f61388cb1a63213688172b63fcc2eae8641235bc03bdc36344ae97d8a",
+        "packages/profile/dist/node.js": "c25dab6a03efaec5fab673ca2c455ca61315a67a0c9d1c20643f184489941686",
+        "packages/profile/dist/browser.js": "2df2a1bf310e9314000f0fb0df595347e490b00de8198b61cc909f33ffccc17f",
+        "scripts/benchmark.mjs": "0d18cbc56da1f1d898c4827ab9c20347acf768ed80553d4cc724f24839538add",
+        "scripts/bench/harness.mjs": "9dbaf22256d00cd9954878af1e7d4c2b1c126cf2771cbe46a83bff9d6a8d3ace",
+        "scripts/bench/workload.mjs": "e34529ab07364642eb38a4ce4e0dd043b810aabba1edf496e98df9bdb6aeaf95",
+        "scripts/bench/statistics.mjs": "076146ee6d176f6e747e90478548d0d0bf92bc486f09b88ab3499efad3d44574"
+      },
+      "machine": {
+        "platform": "win32",
+        "release": "10.0.26200",
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF",
+        "logicalCpus": 16,
+        "memory": 25601249280
+      },
+      "clockResolutionMs": 0.0000999999901978299,
+      "node": "v24.18.0",
+      "visibility": [],
+      "maxLatenessMs": 0,
+      "storage": {
+        "noise": 0,
+        "off": 0,
+        "stats": 14848,
+        "trace": 8388096,
+        "trace-full": 8388096,
+        "trace-ring": 8388096
+      },
+      "summaries": {
+        "noise": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": -1.763180639585138,
+              "ci95": [
+                -4.584040747028862,
+                1.0424028268551266
+              ],
+              "unit": "%",
+              "noiseEnvelope": 4.584040747028862,
+              "budget": null,
+              "decision": "not-budgeted"
+            },
+            "wall": {
+              "estimate": -0.08229516291381467,
+              "ci95": [
+                -0.8252411992286102,
+                0.6009017666913641
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.8252411992286102,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.35269257812501564,
+          "candidateMedianMs": 0.3536769531249888,
+          "baselineP99Ms": 0.4099785156249993,
+          "candidateP99Ms": 0.38312539062499695
+        },
+        "off": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": -1.327885597548517,
+              "ci95": [
+                -3.7405223251895547,
+                1.0321692757612189
+              ],
+              "unit": "%",
+              "noiseEnvelope": 4.584040747028862,
+              "budget": 0.2,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 0.37814815455374795,
+              "ci95": [
+                -0.5022489252182516,
+                1.2031242056227187
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.8252411992286102,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.3545750000000112,
+          "candidateMedianMs": 0.35657226562500455,
+          "baselineP99Ms": 0.4204574218749997,
+          "candidateP99Ms": 0.40594921874998136
+        },
+        "stats": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": 1.218026796589533,
+              "ci95": [
+                -1.867865790383949,
+                4.384096556620509
+              ],
+              "unit": "%",
+              "noiseEnvelope": 4.584040747028862,
+              "budget": 1,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 1.4800670242912206,
+              "ci95": [
+                0.8151490058969424,
+                2.2479201218974953
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.8252411992286102,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.35290117187500414,
+          "candidateMedianMs": 0.3557480468750214,
+          "baselineP99Ms": 0.4691906250000102,
+          "candidateP99Ms": 0.4656999999999982
+        },
+        "trace": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": 2.7787426189649134,
+              "ci95": [
+                -0.3112571329759617,
+                6.231030173183361
+              ],
+              "unit": "%",
+              "noiseEnvelope": 4.584040747028862,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 3.4081096625758756,
+              "ci95": [
+                2.787033664428029,
+                4.105609539768684
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.8252411992286102,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.353174609375003,
+          "candidateMedianMs": 0.36276679687500746,
+          "baselineP99Ms": 0.3853152343750139,
+          "candidateP99Ms": 0.40491328125000337
+        },
+        "trace-full": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": 1.9611246095105894,
+              "ci95": [
+                -1.0143702451394732,
+                5.3174462030944225
+              ],
+              "unit": "%",
+              "noiseEnvelope": 4.584040747028862,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 0.7065873015707824,
+              "ci95": [
+                -0.34253583177027425,
+                1.5364076702719887
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.8252411992286102,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.35340546874999745,
+          "candidateMedianMs": 0.3554183593750082,
+          "baselineP99Ms": 0.49491718749999336,
+          "candidateP99Ms": 0.4118058593749936
+        },
+        "trace-ring": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": 1.283147989734812,
+              "ci95": [
+                -1.5108275977841146,
+                4.270401106500699
+              ],
+              "unit": "%",
+              "noiseEnvelope": 4.584040747028862,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 2.7964238300023148,
+              "ci95": [
+                2.008024959490551,
+                3.725096991231336
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.8252411992286102,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.3548402343750183,
+          "candidateMedianMs": 0.36035195312501855,
+          "baselineP99Ms": 0.4737355468750195,
+          "candidateP99Ms": 0.48302929687497453
+        }
+      }
+    },
+    {
+      "id": "2026-10-16T12-25-13.041Z-node-throughput-after",
+      "runtime": "node",
+      "kind": "throughput",
+      "rounds": 64,
+      "sourceSnapshotsVerified": true,
+      "rawSha256": "f9399457d1426de8107f6e9d3120cf8449c126e614e236d318e76effba9a69f1",
+      "sourceHashes": {
+        "packages/profile/src/core.ts": "956d5e78fc76dc695c0e0b90c8a018d9a8622ead8f2c10f59dfa40c78a72a7e9",
+        "packages/profile/src/node.ts": "07ae46f0ee1dbeb5902b3068982ae7bedb325178c3169d75b97413b9f7c7ee82",
+        "packages/profile/src/browser.ts": "e6b8d16f61388cb1a63213688172b63fcc2eae8641235bc03bdc36344ae97d8a",
+        "packages/profile/dist/node.js": "07fbee4f523bfc2fac8c681d5c879922ee9f074c5a6fdd51a3da70ca6f4ce137",
+        "packages/profile/dist/browser.js": "783cff1315136b18001162d69315dd1084eed6338085b56aa20f114f9b22a501",
+        "scripts/benchmark.mjs": "0d18cbc56da1f1d898c4827ab9c20347acf768ed80553d4cc724f24839538add",
+        "scripts/bench/harness.mjs": "9dbaf22256d00cd9954878af1e7d4c2b1c126cf2771cbe46a83bff9d6a8d3ace",
+        "scripts/bench/workload.mjs": "e34529ab07364642eb38a4ce4e0dd043b810aabba1edf496e98df9bdb6aeaf95",
+        "scripts/bench/statistics.mjs": "076146ee6d176f6e747e90478548d0d0bf92bc486f09b88ab3499efad3d44574"
+      },
+      "machine": {
+        "platform": "win32",
+        "release": "10.0.26200",
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF",
+        "logicalCpus": 16,
+        "memory": 25601249280
+      },
+      "clockResolutionMs": 0.0000999999901978299,
+      "node": "v24.18.0",
+      "visibility": [],
+      "maxLatenessMs": 0,
+      "storage": {
+        "noise": 0,
+        "off": 0,
+        "stats": 14848,
+        "trace": 8388096,
+        "trace-full": 8388096,
+        "trace-ring": 8388096
+      },
+      "summaries": {
+        "noise": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": -1.6762797404470064,
+              "ci95": [
+                -6.404886561954626,
+                2.9850746268656803
+              ],
+              "unit": "%",
+              "noiseEnvelope": 6.404886561954626,
+              "budget": null,
+              "decision": "not-budgeted"
+            },
+            "wall": {
+              "estimate": 0.11536494484847282,
+              "ci95": [
+                -0.3846168620543544,
+                0.6107772764562425
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.6107772764562425,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.33855234374999554,
+          "candidateMedianMs": 0.3385937499999727,
+          "baselineP99Ms": 0.3777585937500021,
+          "candidateP99Ms": 0.3634933593749565
+        },
+        "off": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": -1.0754615522495126,
+              "ci95": [
+                -4.860245682748799,
+                2.8837379083774373
+              ],
+              "unit": "%",
+              "noiseEnvelope": 6.404886561954626,
+              "budget": 0.2,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 0.7196865055639101,
+              "ci95": [
+                0.30762558064463263,
+                1.149380230096142
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.6107772764562425,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.33854687500002,
+          "candidateMedianMs": 0.3408765625000001,
+          "baselineP99Ms": 0.35713515624996717,
+          "candidateP99Ms": 0.35679882812500097
+        },
+        "stats": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": 2.9950083194675514,
+              "ci95": [
+                -1.447178002894356,
+                8.068506184586099
+              ],
+              "unit": "%",
+              "noiseEnvelope": 6.404886561954626,
+              "budget": 1,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 1.1333372207893655,
+              "ci95": [
+                0.6897566712415593,
+                1.6104898220830721
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.6107772764562425,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.338488671874984,
+          "candidateMedianMs": 0.34159062500000914,
+          "baselineP99Ms": 0.35508085937499345,
+          "candidateP99Ms": 0.3610550781250055
+        },
+        "trace": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": -1.2430192758061565,
+              "ci95": [
+                -5.564444444444449,
+                3.2604668395702197
+              ],
+              "unit": "%",
+              "noiseEnvelope": 6.404886561954626,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 1.9471098857880786,
+              "ci95": [
+                1.4288656079074924,
+                2.4899023121143227
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.6107772764562425,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.33874023437499545,
+          "candidateMedianMs": 0.34504843749999736,
+          "baselineP99Ms": 0.3546453125000255,
+          "candidateP99Ms": 0.36332109375001664
+        },
+        "trace-full": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": 2.2665457842248493,
+              "ci95": [
+                -1.5853443720274751,
+                6.182695878202749
+              ],
+              "unit": "%",
+              "noiseEnvelope": 6.404886561954626,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 0.7951630589065894,
+              "ci95": [
+                0.4214007158420019,
+                1.204199072054779
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.6107772764562425,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.3390855468749976,
+          "candidateMedianMs": 0.3413621093749839,
+          "baselineP99Ms": 0.3531210937500191,
+          "candidateP99Ms": 0.3589984374999915
+        },
+        "trace-ring": {
+          "pairs": 64,
+          "metrics": {
+            "cpu": {
+              "estimate": -0.7117437722419906,
+              "ci95": [
+                -4.333333333333334,
+                2.951232679503324
+              ],
+              "unit": "%",
+              "noiseEnvelope": 6.404886561954626,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 1.2963679486856616,
+              "ci95": [
+                0.7919768634611302,
+                1.8469885944288444
+              ],
+              "unit": "%",
+              "noiseEnvelope": 0.6107772764562425,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "baselineMedianMs": 0.3393902343750028,
+          "candidateMedianMs": 0.3435453124999981,
+          "baselineP99Ms": 0.35700234374999695,
+          "candidateP99Ms": 0.3627496093749869
+        }
+      }
+    },
+    {
+      "id": "2026-10-16T12-29-16.771Z-node-cpu-window-final",
+      "runtime": "node",
+      "kind": "cpu-window",
+      "rounds": 32,
+      "sourceSnapshotsVerified": true,
+      "rawSha256": "45fba6dbd12bc346ef80fbd5708040b0042cd222232eb3d9c4d32f78e6f243dd",
+      "sourceHashes": {
+        "packages/profile/src/core.ts": "956d5e78fc76dc695c0e0b90c8a018d9a8622ead8f2c10f59dfa40c78a72a7e9",
+        "packages/profile/src/node.ts": "07ae46f0ee1dbeb5902b3068982ae7bedb325178c3169d75b97413b9f7c7ee82",
+        "packages/profile/src/browser.ts": "e6b8d16f61388cb1a63213688172b63fcc2eae8641235bc03bdc36344ae97d8a",
+        "packages/profile/dist/node.js": "07fbee4f523bfc2fac8c681d5c879922ee9f074c5a6fdd51a3da70ca6f4ce137",
+        "packages/profile/dist/browser.js": "783cff1315136b18001162d69315dd1084eed6338085b56aa20f114f9b22a501",
+        "scripts/benchmark.mjs": "5c416182bd152286c79d8da5fb77a62e210828d8486b9abd1fea751d8dc64f03",
+        "scripts/bench/harness.mjs": "2f4302b6ad7b4eabccaaea9f8790a25afbf9084d5729d278202ee3e5daf7e3a3",
+        "scripts/bench/workload.mjs": "e34529ab07364642eb38a4ce4e0dd043b810aabba1edf496e98df9bdb6aeaf95",
+        "scripts/bench/statistics.mjs": "1ffb014665a9355076a6e9f3dacc4b64b3a0cd47f3695b43a238e1746a83f40e"
+      },
+      "machine": {
+        "platform": "win32",
+        "release": "10.0.26200",
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF",
+        "logicalCpus": 16,
+        "memory": 25601249280
+      },
+      "clockResolutionMs": 0.00009999994654208422,
+      "node": "v24.18.0",
+      "visibility": [],
+      "maxLatenessMs": 0,
+      "storage": {
+        "noise": 0,
+        "off": 0,
+        "stats": 14848,
+        "trace": 8388096,
+        "trace-full": 8388096,
+        "trace-ring": 8388096
+      },
+      "summaries": {
+        "noise": {
+          "pairs": 32,
+          "metrics": {
+            "cpu": {
+              "estimate": 1.2122786509070504,
+              "ci95": [
+                -0.6136750010366177,
+                2.9655669731386336
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.9655669731386336,
+              "budget": null,
+              "decision": "not-budgeted"
+            },
+            "wall": {
+              "estimate": 0.3340980762241541,
+              "ci95": [
+                -1.3742523048430488,
+                2.19397664815002
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.19397664815002,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "block mean tick costs; not individual tick p99",
+          "baselineMedianMs": 0.34712998046875043,
+          "candidateMedianMs": 0.34433417968750746,
+          "baselineP99Ms": 0.4897033203124863,
+          "candidateP99Ms": 0.47276718750001123
+        },
+        "off": {
+          "pairs": 32,
+          "metrics": {
+            "cpu": {
+              "estimate": 3.1074907335574498,
+              "ci95": [
+                1.4164913937416923,
+                5.05684210526316
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.9655669731386336,
+              "budget": 0.2,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 12.213397649635649,
+              "ci95": [
+                1.769797346105162,
+                32.109221298267165
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.19397664815002,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "block mean tick costs; not individual tick p99",
+          "baselineMedianMs": 0.3425544433593757,
+          "candidateMedianMs": 0.3469292968750004,
+          "baselineP99Ms": 0.7758194824218805,
+          "candidateP99Ms": 1.4165563964843741
+        },
+        "stats": {
+          "pairs": 32,
+          "metrics": {
+            "cpu": {
+              "estimate": 3.5242849889998373,
+              "ci95": [
+                1.726593861958814,
+                5.401899661073695
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.9655669731386336,
+              "budget": 1,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 4.1109968568584065,
+              "ci95": [
+                1.854851034959859,
+                6.999703223900511
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.19397664815002,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "block mean tick costs; not individual tick p99",
+          "baselineMedianMs": 0.3434571289062518,
+          "candidateMedianMs": 0.34936450195313284,
+          "baselineP99Ms": 0.5968395507812545,
+          "candidateP99Ms": 0.6697205566406268
+        },
+        "trace": {
+          "pairs": 32,
+          "metrics": {
+            "cpu": {
+              "estimate": 6.838584010840099,
+              "ci95": [
+                4.262337775077052,
+                9.926930685075286
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.9655669731386336,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 10.839448260000651,
+              "ci95": [
+                3.857572550919164,
+                21.03337781587249
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.19397664815002,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "block mean tick costs; not individual tick p99",
+          "baselineMedianMs": 0.3445238281249985,
+          "candidateMedianMs": 0.3525886230468771,
+          "baselineP99Ms": 0.5452776367187511,
+          "candidateP99Ms": 1.161882031250002
+        },
+        "trace-full": {
+          "pairs": 32,
+          "metrics": {
+            "cpu": {
+              "estimate": 7.258617732807404,
+              "ci95": [
+                5.136478590738647,
+                9.654059422328887
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.9655669731386336,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 6.263930441748089,
+              "ci95": [
+                3.9291933850766902,
+                9.154116324889738
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.19397664815002,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "block mean tick costs; not individual tick p99",
+          "baselineMedianMs": 0.34136811523437416,
+          "candidateMedianMs": 0.35442231445313155,
+          "baselineP99Ms": 0.5215592285156276,
+          "candidateP99Ms": 0.6282419921874975
+        },
+        "trace-ring": {
+          "pairs": 32,
+          "metrics": {
+            "cpu": {
+              "estimate": 7.772329993604776,
+              "ci95": [
+                5.112347052280319,
+                10.738756696150498
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.9655669731386336,
+              "budget": 5,
+              "decision": "insufficient-evidence"
+            },
+            "wall": {
+              "estimate": 2.7622039932390985,
+              "ci95": [
+                -2.3796448609707865,
+                6.640366597515035
+              ],
+              "unit": "%",
+              "noiseEnvelope": 2.19397664815002,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "block mean tick costs; not individual tick p99",
+          "baselineMedianMs": 0.34993149414062685,
+          "candidateMedianMs": 0.3572896484375008,
+          "baselineP99Ms": 0.9040937988281286,
+          "candidateP99Ms": 0.6560101562499909
+        }
+      }
+    },
+    {
+      "id": "2026-10-16T12-35-02.612Z-node-paced-final",
+      "runtime": "node",
+      "kind": "paced",
+      "rounds": 2000,
+      "sourceSnapshotsVerified": true,
+      "rawSha256": "58da2c67d5eadde7be2d47946cd5f3b143b4cff5dfae7e162d558c66f93cc3b7",
+      "sourceHashes": {
+        "packages/profile/src/core.ts": "956d5e78fc76dc695c0e0b90c8a018d9a8622ead8f2c10f59dfa40c78a72a7e9",
+        "packages/profile/src/node.ts": "07ae46f0ee1dbeb5902b3068982ae7bedb325178c3169d75b97413b9f7c7ee82",
+        "packages/profile/src/browser.ts": "e6b8d16f61388cb1a63213688172b63fcc2eae8641235bc03bdc36344ae97d8a",
+        "packages/profile/dist/node.js": "07fbee4f523bfc2fac8c681d5c879922ee9f074c5a6fdd51a3da70ca6f4ce137",
+        "packages/profile/dist/browser.js": "783cff1315136b18001162d69315dd1084eed6338085b56aa20f114f9b22a501",
+        "scripts/benchmark.mjs": "5c416182bd152286c79d8da5fb77a62e210828d8486b9abd1fea751d8dc64f03",
+        "scripts/bench/harness.mjs": "2f4302b6ad7b4eabccaaea9f8790a25afbf9084d5729d278202ee3e5daf7e3a3",
+        "scripts/bench/workload.mjs": "e34529ab07364642eb38a4ce4e0dd043b810aabba1edf496e98df9bdb6aeaf95",
+        "scripts/bench/statistics.mjs": "1ffb014665a9355076a6e9f3dacc4b64b3a0cd47f3695b43a238e1746a83f40e"
+      },
+      "machine": {
+        "platform": "win32",
+        "release": "10.0.26200",
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF",
+        "logicalCpus": 16,
+        "memory": 25601249280
+      },
+      "clockResolutionMs": 0.0000999999901978299,
+      "node": "v24.18.0",
+      "visibility": [
+        "not-applicable"
+      ],
+      "maxLatenessMs": 16.240100000002712,
+      "storage": {
+        "noise": 0,
+        "off": 0,
+        "stats": 14848,
+        "trace": 8388096,
+        "trace-full": 8388096,
+        "trace-ring": 8388096
+      },
+      "summaries": {
+        "noise": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.03510000000096625,
+              "ci95": [
+                -0.006099999984144233,
+                0.08409999999275897
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.08429999997315463,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.3350999999966007,
+          "candidateMedianMs": 0.3352000000013504,
+          "baselineP99Ms": 0.4962999999988824,
+          "candidateP99Ms": 0.5313999999998487
+        },
+        "off": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.010199999989708886,
+              "ci95": [
+                -0.03899999998975545,
+                0.10459999999875436
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.08429999997315463,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.3350999999966007,
+          "candidateMedianMs": 0.3371000000042841,
+          "baselineP99Ms": 0.4892000000108965,
+          "candidateP99Ms": 0.49940000000060536
+        },
+        "stats": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.007800000013958197,
+              "ci95": [
+                -0.05169999999634456,
+                0.07190000000991859
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.08429999997315463,
+              "budget": 0.1,
+              "decision": "insufficient-evidence"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.3350999999966007,
+          "candidateMedianMs": 0.33950000000186265,
+          "baselineP99Ms": 0.5380999999979394,
+          "candidateP99Ms": 0.5459000000118976
+        },
+        "trace": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.07000000000698492,
+              "ci95": [
+                -0.005400000012741657,
+                0.1207999999896856
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.08429999997315463,
+              "budget": 0.5,
+              "decision": "passed"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.3350999999966007,
+          "candidateMedianMs": 0.341999999996915,
+          "baselineP99Ms": 0.49539999999979045,
+          "candidateP99Ms": 0.5654000000067754
+        },
+        "trace-full": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.0039000000033411197,
+              "ci95": [
+                -0.04400000000896398,
+                0.04439999999885913
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.08429999997315463,
+              "budget": 0.5,
+              "decision": "passed"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.3350999999966007,
+          "candidateMedianMs": 0.33840000000054715,
+          "baselineP99Ms": 0.5590999999985797,
+          "candidateP99Ms": 0.5630000000019209
+        },
+        "trace-ring": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.0034999999988940544,
+              "ci95": [
+                -0.10299999999551801,
+                0.07300000000032014
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.08429999997315463,
+              "budget": 0.5,
+              "decision": "passed"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.3350999999966007,
+          "candidateMedianMs": 0.34080000000540167,
+          "baselineP99Ms": 0.5138000000006286,
+          "candidateP99Ms": 0.5172999999995227
+        }
+      }
+    },
+    {
+      "id": "2026-10-16T12-37-06.587Z-browser-paced-final",
+      "runtime": "browser",
+      "kind": "paced",
+      "rounds": 2000,
+      "sourceSnapshotsVerified": true,
+      "rawSha256": "03a8f940308bd1ea07bc04c8fc3e34b868a62315c6203cf6c7bb01b92052f016",
+      "sourceHashes": {
+        "packages/profile/src/core.ts": "956d5e78fc76dc695c0e0b90c8a018d9a8622ead8f2c10f59dfa40c78a72a7e9",
+        "packages/profile/src/node.ts": "07ae46f0ee1dbeb5902b3068982ae7bedb325178c3169d75b97413b9f7c7ee82",
+        "packages/profile/src/browser.ts": "e6b8d16f61388cb1a63213688172b63fcc2eae8641235bc03bdc36344ae97d8a",
+        "packages/profile/dist/node.js": "07fbee4f523bfc2fac8c681d5c879922ee9f074c5a6fdd51a3da70ca6f4ce137",
+        "packages/profile/dist/browser.js": "783cff1315136b18001162d69315dd1084eed6338085b56aa20f114f9b22a501",
+        "scripts/benchmark.mjs": "5c416182bd152286c79d8da5fb77a62e210828d8486b9abd1fea751d8dc64f03",
+        "scripts/bench/harness.mjs": "2f4302b6ad7b4eabccaaea9f8790a25afbf9084d5729d278202ee3e5daf7e3a3",
+        "scripts/bench/workload.mjs": "e34529ab07364642eb38a4ce4e0dd043b810aabba1edf496e98df9bdb6aeaf95",
+        "scripts/bench/statistics.mjs": "1ffb014665a9355076a6e9f3dacc4b64b3a0cd47f3695b43a238e1746a83f40e"
+      },
+      "machine": {
+        "platform": "win32",
+        "release": "10.0.26200",
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF",
+        "logicalCpus": 16,
+        "memory": 25601249280
+      },
+      "clockResolutionMs": 0.09999999403953552,
+      "browser": "155.0.8059.84",
+      "headless": true,
+      "realOsForegroundValidated": false,
+      "visibility": [
+        "visible"
+      ],
+      "maxLatenessMs": 18.799999997019768,
+      "storage": {
+        "noise": 0,
+        "off": 0,
+        "stats": 14848,
+        "trace": 8388096,
+        "trace-full": 8388096,
+        "trace-ring": 8388096
+      },
+      "summaries": {
+        "noise": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0,
+              "ci95": [
+                -0.09999999403953552,
+                0.09999999403953552
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.29999998211860657,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.30000001192092896,
+          "candidateMedianMs": 0.30000001192092896,
+          "baselineP99Ms": 0.5,
+          "candidateP99Ms": 0.5
+        },
+        "off": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0,
+              "ci95": [
+                0,
+                0.09999999403953552
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.29999998211860657,
+              "budget": null,
+              "decision": "not-budgeted"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.30000001192092896,
+          "candidateMedianMs": 0.30000001192092896,
+          "baselineP99Ms": 0.5,
+          "candidateP99Ms": 0.5
+        },
+        "stats": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0,
+              "ci95": [
+                -0.09999999403953552,
+                0.10000000894069672
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.29999998211860657,
+              "budget": 0.1,
+              "decision": "insufficient-evidence"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.30000001192092896,
+          "candidateMedianMs": 0.30000001192092896,
+          "baselineP99Ms": 0.5,
+          "candidateP99Ms": 0.5
+        },
+        "trace": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0.09999999403953552,
+              "ci95": [
+                -0.10000000894069672,
+                0.09999999403953552
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.29999998211860657,
+              "budget": 0.5,
+              "decision": "passed"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.30000001192092896,
+          "candidateMedianMs": 0.30000001192092896,
+          "baselineP99Ms": 0.5,
+          "candidateP99Ms": 0.5999999940395355
+        },
+        "trace-full": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": -0.09999999403953552,
+              "ci95": [
+                -0.10000000894069672,
+                0.09999999403953552
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.29999998211860657,
+              "budget": 0.5,
+              "decision": "passed"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.30000001192092896,
+          "candidateMedianMs": 0.30000001192092896,
+          "baselineP99Ms": 0.5999999940395355,
+          "candidateP99Ms": 0.5
+        },
+        "trace-ring": {
+          "pairs": 2000,
+          "metrics": {
+            "p99": {
+              "estimate": 0,
+              "ci95": [
+                -0.10000000894069672,
+                0.10000000894069672
+              ],
+              "unit": "ms",
+              "noiseEnvelope": 0.29999998211860657,
+              "budget": 0.5,
+              "decision": "passed"
+            }
+          },
+          "distribution": "individual ticks",
+          "baselineMedianMs": 0.30000001192092896,
+          "candidateMedianMs": 0.30000001192092896,
+          "baselineP99Ms": 0.5999999940395355,
+          "candidateP99Ms": 0.5999999940395355
+        }
+      }
+    }
+  ],
+  "hotpath": {
+    "diagnosticOnly": true,
+    "hashes": {
+      "before": "c25dab6a03efaec5fab673ca2c455ca61315a67a0c9d1c20643f184489941686",
+      "after": "07fbee4f523bfc2fac8c681d5c879922ee9f074c5a6fdd51a3da70ca6f4ce137"
+    },
+    "summaries": {
+      "stats": {
+        "wallChangePercent": -23.847642285422143,
+        "ci95": [
+          -25.207898886333368,
+          -22.370887422993047
+        ],
+        "pairs": [
+          [
+            229.1747,
+            175.2347
+          ],
+          [
+            228.76730000000003,
+            180.9804
+          ],
+          [
+            228.23430000000002,
+            171.0548
+          ],
+          [
+            224.6675,
+            165.76950000000002
+          ],
+          [
+            221.1794,
+            163.34699999999998
+          ],
+          [
+            210.168,
+            166.0318
+          ],
+          [
+            217.76129999999998,
+            162.74470000000002
+          ],
+          [
+            212.5288,
+            164.6234
+          ]
+        ]
+      },
+      "trace": {
+        "wallChangePercent": -20.853275767784552,
+        "ci95": [
+          -21.59159721507763,
+          -19.80559154350121
+        ],
+        "pairs": [
+          [
+            794.4984999999999,
+            622.8406
+          ],
+          [
+            815.0888000000001,
+            637.3471
+          ],
+          [
+            794.2692,
+            625.4521
+          ],
+          [
+            808.7947,
+            632.4690999999999
+          ],
+          [
+            794.5175,
+            637.0424
+          ],
+          [
+            817.1988,
+            671.4318999999999
+          ],
+          [
+            804.41,
+            631.6469
+          ],
+          [
+            805.5338999999999,
+            634.3166
+          ]
+        ]
+      }
+    }
+  },
+  "excluded": [
+    {
+      "directory": "2026-10-16T12-26-55.813Z-node-paced-after",
+      "sourceSnapshotsVerified": false,
+      "mismatches": [
+        "scripts/benchmark.mjs",
+        "scripts/bench/harness.mjs",
+        "scripts/bench/statistics.mjs"
+      ],
+      "checksumPairsMatch": true,
+      "maxLatenessMs": 17.04660000000149,
+      "visibility": [
+        "not-applicable"
+      ],
+      "storage": {
+        "noise": 0,
+        "off": 0,
+        "stats": 14848,
+        "trace": 8388096,
+        "trace-full": 8388096,
+        "trace-ring": 8388096
+      }
+    }
+  ],
+  "limitations": [
+    "No Unity/PuerTS real runtime",
+    "No browser CPU measurements",
+    "No real OS foreground/background validation",
+    "CPU-window includes lifecycle and prefill; not pure hot path",
+    "Reserved storage is not an exact JavaScript heap bound",
+    "No forced GC or outlier deletion"
+  ]
+}

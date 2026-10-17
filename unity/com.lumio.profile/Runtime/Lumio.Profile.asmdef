@@ -1,0 +1,7 @@
+{
+  "name": "Lumio.Profile",
+  "rootNamespace": "Lumio.Profile",
+  "autoReferenced": false,
+  "defineConstraints": ["LUMIO_PROFILE"],
+  "noEngineReferences": true
+}

@@ -1,0 +1,28 @@
+{
+  "name": "lumio-profile-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "verify:optional": "node scripts/verify-optional.mjs",
+    "verify:browser": "node scripts/verify-browser.mjs",
+    "verify:perfetto": "node scripts/verify-perfetto.mjs",
+    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:throughput": "node scripts/benchmark-throughput.mjs",
+    "benchmark:browser": "node scripts/benchmark.mjs --runtime browser",
+    "benchmark:cpu": "node scripts/benchmark.mjs --kind cpu-window",
+    "setup:perfetto": "node scripts/setup-perfetto.mjs",
+    "demo": "node examples/node/capture.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ws": "8.18.2",
+    "esbuild": "0.28.2",
+    "playwright": "1.64.1",
+    "typescript": "5.9.3"
+  },
+  "engines": { "node": ">=22.18" }
+}
