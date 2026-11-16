@@ -23,7 +23,8 @@ export function createHarness(factory, env) {
       if (!plan.ok || !p.start({ token: plan.token, requestId: `r${serial}`, captureId: `c${serial}` }).ok) throw new Error('benchmark-capture-start');
     }
     const startMs = env.now() - t1;
-    if (mode === 'trace-full' || mode === 'trace-ring') for (let i = 0; i < bytes / 1024 + 1; i++) host.trace.event(5);
+    const prefillCount = (p?.status().capacity || Math.ceil(bytes / 80)) + 16;
+    if (mode === 'trace-full' || mode === 'trace-ring') for (let i = 0; i < prefillCount; i++) host.trace.event(5);
     const state = { mode, host, p, factoryMs, startMs, ticks: 0 };
     states.set(mode, state);
     return state;

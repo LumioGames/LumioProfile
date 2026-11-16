@@ -6,7 +6,29 @@ metadata:
   status: 已交付
 ---
 
-# 第一版验证与开销记录
+# 验证与开销记录
+
+## 2026-11-16 v0.2.0 升级回归（macOS arm64 · Node 22.23.2 · Chrome 157 · Perfetto v58.2）
+
+针对 NextWorld 接入实测与仓库复评暴露的跨场令牌碰撞、串行停机、忙主线程时间轴退回、4 场会话上限、8MiB 仅 8162 条容量、$O(N^2)$ 分析、展开运算符栈溢出及缺少自动采集源等问题，在本仓独立合成宿主与自动化回归套件中完成升级核验（仅修改本仓，未改其他仓库）：
+
+| 命令 | 实际结果 |
+| --- | --- |
+| `npm ci / typecheck / build` | 通过；`prepare` 自动构建三端独立入口、单文件零导入 `contracts/browser-v1.d.ts`、内置 `observation-v1.d.ts` 与工具包；0 漏洞 |
+| `npm test` | **49 项全部通过**（原 41 项 + 新增 8 组回归：代次令牌防撞、到期零伪缺口、非严格 LIFO 恢复与异步区间、8MiB 104,652 槽与 32KiB 持续排出 2500 条零丢弃、并发停机与有界外推、分页重试与 `pull` 补拉、单服务连续 >4 场、32,000 区间 $O(N)$ 分析与 150,000 事件转换、进程内 CPU 采样/GC/混合统计时间序列及自动重连） |
+| `npm run verify:optional` | 仓库目录树外独立临时目录验证（不改名工作区 `node_modules`）：完全裁剪产物 **76 bytes**、保留 Off 判断产物 **155 bytes**；独立单文件 `browser-v1.d.ts` 类型检查通过；PuerTS VM 零全局隔离通过 |
+| `npm run setup:perfetto` | 自动识别代理环境变量并支持 6 类桌面/服务器平台（含 `darwin-arm64`、`darwin-x64`、`linux-arm64`、`linux-x64`、`win32-x64`），下载后预热 `--version` 校验通过 |
+| `npm run verify:perfetto` | 官方 `trace_processor_shell` v58.2 导入 `.pftrace`，查出 1043ms 排队等待、9ms 执行与 1 条因果 Flow，导入错误计数为 0 |
+| `npm run demo` | Node 主线程与 Room Worker 通过首帧认证 `connect()` 连接，开启 `gc,cpu` 自动采集并经真实 CLI 查出队列等待与 `cpu-hotspots` |
+| `npm run verify:browser` | 本机 Chrome 157（headless，移除自动化禁节流默认参数），开启 COOP/COEP + `Document-Policy: js-profiling`（`crossOriginIsolated: true`，实测 `precisionMs: 0.005`），2 个页面 + 2 个 Worker 共 4 个来源同步停机、采集 `raf` 与 JS Self-Profiling 栈样本，合并至 **1 个共享 Perfetto 时间域** |
+| `npm run verify:docs` | 23 份 Markdown 文档 YAML frontmatter 与相对链接核验通过 |
+| 热点吞吐复核 | `benchmark-hotpath.mjs` 600 万对 span（1200 万条记录）耗时约 1.52s（~126ns/条），8MiB 保留 104,624 条；600 万组 × 3 次 Stats 更新耗时约 0.58s |
+
+未验证边界保持诚实标注：**Unity / PuerTS / Mono / IL2CPP 真实运行环境、WebGL / 原生 GPU 计时、OS 真实物理窗口前后台切换与物理屏幕呈现测量尚未在目标环境验证。**
+
+---
+
+## 2026-10-16 v0.1.0 初始验证与开销基线（Windows x64 · Node 24.18.0）
 
 真实101游戏的后续本机验证见 [外部接入证据](../../archive/evidence/2026-10-16-101-game-validation.md)：solo、独立DS、双浏览器和GAS身份链已实际采集；结论为受限可行，严格CPU/p99预算仍证据不足。下文保留第一版合成宿主实验的原始范围，不用后续游戏结果改写它。
 

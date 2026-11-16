@@ -93,11 +93,11 @@ profiler.scope(markerId, () => doWork());  // 仍可能创建闭包并经过包�
 
 通用 TS 层不依赖 `window`、`performance`、`process`、文件系统、网络或 Unity API。每个执行上下文拥有自己的适配器、槽位、时钟标识和有界缓冲；跨 Worker 传递配置与记录协议，不传 writer 对象。
 
-| 环境 | 由适配器提供 | 接入时特别验证 |
+| 环境 | 由适配器提供（括号标注当前状态） | 接入时特别验证 |
 | --- | --- | --- |
-| 浏览器主线程 / Worker | 已验证的单调时钟、本地缓冲、批量排出、可用浏览器数据源 | 各 Worker 实际覆盖；主线程能力不能默认套给 Worker |
-| Unity + PuerTS | 注入的单调时钟、每脚本环境缓冲、批量 TS→原生排出、Unity 数据适配 | JS 侧关闭判断不跨 C#；后端/平台能力；计时跨界成本；环境重建 |
-| Node Host / Room Worker | Node 时钟、各实例缓冲、排出、事件循环/GC/采样适配 | Host 与 Room 覆盖分别报告；源 TS 执行和实际发布入口分别检查 |
+| 浏览器主线程 / Worker | 单调时钟与分辨率探测（已实现）、紧凑本地缓冲与持续排出（已实现）、`connect()` 首帧认证与自动重连（已实现）、`messagePortChannel`（已实现）、可选 `raf` / `longtask` / `long-animation-frame` / `Profiler` JS 采样（已实现）；WebGL GPU 计时（未实现） | 各 Worker 实际覆盖；开启 COOP/COEP 以获得 ~0.005ms 时钟分辨率，开启 `Document-Policy: js-profiling` 以启用浏览器 JS 采样 |
+| Unity + PuerTS | 注入的单调时钟与每脚本环境缓冲（TS 与纯 .NET 契约已实现）；Unity 原生 Profiler/GPU 导出与真机运行（未实现 / 未验证） | JS 侧关闭判断不跨 C#；后端/平台能力；计时跨界成本；环境重建 |
+| Node Host / Room Worker | Node 毫秒时钟（已实现）、紧凑缓冲与持续排出（已实现）、`gc` 观察与进程内 `node:inspector` CPU 采样（已实现，零网络端口） | Host 与 Room 覆盖分别报告；源 TS 执行和实际发布入口分别检查 |
 
 PuerTS 不假设天然拥有浏览器或 Node API。开启时先在 TS 侧记录，按预算批量排出，避免每个 TS 标记都跨 C#；若读取时钟必须跨界，应实测并报告成本。批量排出时间不能代替事件时间。Unity 原生 Marker、计数器、逐帧捕获按实际支持独立接入，不承诺所有 Release Player 都支持完整原生 Profiler 数据。
 
@@ -115,7 +115,7 @@ capabilities → prepare → start → status → stop → export
 2. Agent 读取构建、版本、实际来源和能力，区分未接入、已裁剪、保留但 Off、平台不支持与访问受限。无法连接本身不能证明插件未安装。
 3. 准备有限时、有限容量的采集，明确 Stats/Trace、过滤条件和另选的原生来源。各端返回实际接受配置，不因一个来源支持便推断全部支持。
 4. 开始时为每个来源绑定本次会话的写入槽位。控制消息异步送达，各来源记录实际生效时间，不暂停玩法或等待全端同步屏障。
-5. 停止先撤销本次会话的新写入入口，已开始区间使用原令牌在期限内收尾；不等待业务完成。到期后关闭旧 writer，迟到结束安全丢弃并计入质量信息，不写入新会话。
+5. 停止采用两阶段并发停（已实现）：协调服务先向全部来源并发发送停止，收尾宽限固定为 `0ms`（立即撤销槽位，延长宽限未实现），停稳后补采尾部校准样本再分页导出。未结束区间如实记入 `openSpans`；旧代次令牌的迟到结束安全忽略，绝不写入新会话。
 6. 只停止和释放本次启动的资源；恢复先前模式。导出已有记录及未完成信息，交给 Perfetto 和版本化查询分析。原本由其他工具启动的采样器不能被无条件关闭。
 
 Worker 或 PuerTS 环境重建生成新来源实例；热更记录代码代次，重新验证绑定，旧令牌不能迁移成新环境事件。控制重连不得重复开采集，也不得把旧会话事件关联到新操作。完整的环境核验与证据流程见 [Agent 采集分析流程](../features/agent-capture-analysis.md)。
@@ -212,7 +212,7 @@ const profiler = createBrowserProfiler({
 profiler.attachControl(browserDiagnosticChannel);
 ```
 
-预测 Worker 或 solo Room Worker 在自己的可选入口中使用相同工厂，分别声明实际角色和实例。诊断控制可经专用 MessagePort 转发；各上下文持有独立槽位、时钟与缓冲，不能阻塞玩法消息等待诊断确认。
+预测 Worker 或 solo Room Worker 在自己的可选入口中使用相同工厂，分别声明实际角色和实例。优先使用 `profiler.connect({ endpoint, token })`（已实现：首帧传令牌、自动重连、`close()` 清理）；若 Worker 受环境限制不直接开 WebSocket，可使用 `messagePortChannel(port)`（已实现）经专用 `MessagePort` 转发控制消息。各上下文持有独立槽位、时钟与缓冲，不能阻塞玩法消息等待诊断确认。
 
 `browserDiagnosticChannel` 表示宿主显式提供的诊断通道，例如页面主动连接本地工具端、Worker 经专用通道接入。例子不创建监听、不附加 CPU Profiler，也不模拟焦点或前后台。
 

@@ -1,154 +1,155 @@
 ---
 name: mvp-usage
-description: 第一版构建、三端接入和 Agent 命令的可执行指引；安装本地包或跑通采集分析时查
+description: 当前构建、三端 connect() 接入、COOP/COEP 高精度配置、开发态令牌下发与 Agent CLI 可执行指引
 metadata:
   type: doc
   status: 已交付
 ---
 
-# 第一版使用指引
+# 运行与接入指引（v0.2.0）
 
-当前只发布在本地仓库，包版本 0.1.0。使用 Node >=22.18；本次验证为 Node 24.18.0。先在本仓执行：
+使用 Node >=22.18（已在 Windows Node 24.18.0、macOS Node 22.23.2 / 24.x 验证）。在本仓执行：
 
 ```text
 npm ci
-npm run build
-node scripts/setup-perfetto.mjs
+npm run setup:perfetto
 npm run demo
 ```
 
-下载器固定 Perfetto v58.2 并校验 SHA-256；仅下载到本仓 `.cache/perfetto`。如果网络不能访问 Google 存储，可从官方 v58.2 发布页取得平台二进制，核对脚本中摘要后传入 `--processor`。无需安装 Python。
+- `npm ci` 会自动执行 `prepare` 脚本构建 `packages/profile/dist`、`packages/profile-tools/dist` 及 `contracts/browser-v1.d.ts`，外部仓库通过本地路径或 Git 同步拉取后无需再手动先跑构建。
+- `npm run setup:perfetto` 支持 `win32-x64`、`darwin-arm64`、`darwin-x64`、`linux-x64`、`linux-arm64`、`linux-arm`，自动读取 `HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY`，校验官方 Perfetto v58.2 SHA-256 并在下载后预热执行一次 `--version`（避免 macOS 首次运行的系统扫描导致第一次分析空输出）。
 
-`npm run demo` 使用独立 Node 主线程与 Room Worker，经真实 CLI 采集并查询，输出采集包位置。`npm run verify:browser` 使用已安装 Chrome 跑两个页面及各自 Worker；这是 headless 验证，不是物理窗口前后台验收。更多限制见 [第一版范围](../features/mvp-runtime.md)。
+## 1. 宿主可选契约与单文件浏览器类型
 
-## 可选接入
+普通业务代码仅依赖宿主本地的轻量契约，绝不导入插件包：
 
-宿主复制 `contracts/observation-v1.d.ts` 到自己的代码中；普通业务入口不得从插件导入类型。将诊断入口排除在普通构建的 TS files/include 和打包图之外。`examples/host` 同时展示普通入口和可选诊断入口，`scripts/verify-optional.mjs` 验证实际裁剪。
+- 仅需写入接口时：复制 `contracts/observation-v1.d.ts`（或从已安装包的 `@lumio/profile/contract` 参考）。
+- 若前端开发服务器通过别名重定向将 `/@lumio/profile/browser` 指向单文件 `packages/profile/dist/browser.js`：可直接复制零相对导入的单文件声明 `contracts/browser-v1.d.ts`（或引用 `@lumio/profile/browser-standalone`），无需拼装多个内部 `.d.ts`。
+- 若引擎与游戏各自维护标记段（例如引擎持有 `100–156` 号 `ENGINE_PROFILE_MARKERS`，游戏持有 `200+` 号业务标记）：引擎入口应导出其 `Marker[]` 常量，游戏诊断入口用 `mergeMarkers(ENGINE_PROFILE_MARKERS, GAME_MARKERS)` 一行合并并校验 ID 无冲突。
 
 ```ts
-// 宿主文件：只有本地契约依赖。
-const profileHost: ProfileHost = { contract: 'lumio.observation/1' };
-
+// 普通业务热路径：关闭判断先于任何参数构造与计时
 if (PROFILE_COMPILED) {
   const writer = profileHost.trace;
-  if (writer) writer.event(101, { tick: currentTick });
+  if (writer) {
+    const token = writer.begin(201, { tick: currentTick });
+    try {
+      stepSimulation();
+    } finally {
+      // 既可复用局部变量 writer.end(token)，也可安全重读 profileHost.trace?.end(token)：
+      // 令牌高位携带会话代次，跨场迟到 end 不会误关新一场的区间。
+      writer.end(token);
+    }
+  }
 }
 ```
 
-PROFILE_COMPILED 由宿主构建替换。设为 false 并验证产物才能称为完全裁剪；运行时空槽位仍保留一次判断。关闭判断必须在对象构造、读取计时和跨原生调用之前。
+## 2. 三端装配与一键连接 `connect()`
 
-Debug 和 Release 装配后均为 Off。Release 默认拒绝启用，确需保留诊断时由宿主固定 `policy.allowRelease: true`，不能取自普通客户端 URL 参数。
-
-## 三端装配
-
-下列 common 中的 host、清单、构建和策略都由接入方提供。采集包只提供能力，不替游戏埋点。
+工厂创建实例后仍保持 Off；`profiler.connect({ endpoint, token })` 封装 WebSocket 建连、首帧认证（**令牌放在握手消息中，不拼入 WebSocket URL 参数**）、`helloAck` 确认、服务重启后的指数退避自动重连、Worker 套接字异常隔离以及 `close()` 清理（支持 `Symbol.dispose`，热更新 dispose 时调用 `conn.close()` 即可断开旧连接）：
 
 ```ts
-const common = {
+import { createBrowserProfiler, mergeMarkers } from '@lumio/profile/browser';
+
+const profiler = createBrowserProfiler({
   host: profileHost,
-  markers: [{ id: 101, name: 'step', kind: 'event' as const }],
-  build: { id: 'actual-build-id', mode: 'debug' as const, codeEpoch: '1' },
-  policy: { maxBytes: 8 * 1024 * 1024, maxDurationMs: 60000 }
-};
-```
-
-浏览器主线程与各 Worker 分别装配，不共享 writer：
-
-```ts
-import { createBrowserProfiler, websocketChannel } from '@lumio/profile/browser';
-const profiler = createBrowserProfiler({ ...common, role: 'client-main' });
-// socket 已由可选宿主入口明确建立并完成 open。
-const detach = profiler.attachControl(websocketChannel(socket));
-socket.send(JSON.stringify({ hello: profiler.inspect() }));
-```
-
-Node 主线程与各 Room Worker 分别装配：
-
-```ts
-import { createNodeProfiler, websocketChannel } from '@lumio/profile/node';
-const profiler = createNodeProfiler({ ...common, role: 'ds-room' });
-profiler.attachControl(websocketChannel(socket));
-socket.send(JSON.stringify({ hello: profiler.inspect() }));
-```
-
-PuerTS 入口不依赖浏览器/Node 全局；提供原生时钟、调度器和控制通道：
-
-```ts
-import { createPuertsProfiler } from '@lumio/profile/puerts';
-const profiler = createPuertsProfiler({
-  ...common, role: 'client-script',
-  nativeBridge: {
-    sourceId: native.SourceId, clockId: native.ClockId, clockEpoch: native.ClockEpoch,
-    nowMs: () => native.NowMilliseconds(),
-    setTimeout: (fn, ms) => {
-      const token = native.Schedule(fn, ms);
-      if (!token) throw new Error('native-timer-budget');
-      return token;
-    },
-    clearTimeout: token => native.Cancel(token as number)
+  role: 'client-main',
+  markers: mergeMarkers(engineMarkers, gameMarkers),
+  build: { id: BUILD_ID, mode: 'debug', codeEpoch: '1' },
+  onFault(fault) {
+    // 当发生 clock-fault / writer-fault 内部自动卸载 writer 时通知接入方
+    console.warn('[LumioProfile] writer detached:', fault);
   }
 });
-profiler.attachControl(hostOwnedChannel);
+
+// 检验标记表是否合法（若不合法，validationErrors 会精确指出第几个标记违反了哪条规则）
+if (!profiler.inspect().supported) {
+  console.error('[LumioProfile] invalid catalog:', profiler.validationErrors);
+}
+
+const connection = profiler.connect({ endpoint: 'ws://127.0.0.1:9466/target', token });
+await connection.ready; // 服务已完成注册，立即可被 targets / prepare 发现
+// 热更新或卸载时：connection.close();
 ```
 
-可选 Unity 包位于 `unity/com.lumio.profile`，需要 `LUMIO_PROFILE` 编译符号。宿主在自己的主线程 Update 中调用 native.Pump；关闭且无待处理回调时不读时钟。该代码只验证了 TS 与纯 .NET 契约，Unity/PuerTS 委托绑定和真实构建未验证，不能直接承诺兼容。
+- **Node 主线程与各 Room Worker**：从 `@lumio/profile/node` 导入 `createNodeProfiler`，同样调用 `profiler.connect({ endpoint, token })`。
+- **受限 Worker 无直连 WebSocket 场景**：可使用 `messagePortChannel(port)` 经主线程 `MessagePort` 转发控制消息。
+- **PuerTS**：从 `@lumio/profile/puerts` 导入 `createPuertsProfiler`，注入 `nativeBridge` 与宿主通道（注：真实 Unity/PuerTS 运行环境尚未实测）。
 
-## Agent 控制与分析
+## 3. 浏览器高精度时钟（COOP/COEP）与开发态安全下发令牌
 
-工具与游戏独立部署。显式创建仅本机可读的令牌文件，内容至少 16 字符；令牌不要写进游戏消息或采集 metadata。下面命令均已实现，`SOURCE_A` 等值替换为 targets 返回值。
+### 开启 0.005ms 时钟分辨率与浏览器 JS 采样
+
+未开启跨源隔离时，浏览器会将 `performance.now()` 粗化至 `0.1ms`（100µs），小于 0.1ms 的微区间会大量测得 `0ms`（分析报告会提示 `coarse-browser-clock-unisolated`）。在开发服务器（如 Vite `server.headers`）添加以下响应头，可将时钟分辨率提升至约 **`0.005ms`（5µs）**，并同时解锁浏览器原生 `Profiler`（JS Self-Profiling API）：
+
+```ts
+// vite.config.ts（仅开发或诊断预览开启）
+server: {
+  headers: {
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Document-Policy': 'js-profiling'
+  }
+}
+```
+
+若页面引用了第三方跨域图片/脚本且无法加 `CORP` 头，可将 `Cross-Origin-Embedder-Policy` 设为 `credentialless`（Chromium 支持）。采集结果在 `environment.crossOriginIsolated` 和 `clock.precisionMs` 中自动记录实际状态。
+
+### 开发态令牌下发做法（令牌不入构建产物、不进网址）
+
+1. 本机生成仅当前用户可读的令牌文件（权限 `0600`，至少 16 字符）：
+   `umask 077 && openssl rand -hex 24 > .cache/profile-token`
+2. 在开发服务器（如 Vite `configureServer` 中间件，仅 `vite dev` 存在，正式打包不包含该路由）暴露同源只读开发接口（例如 `GET /dev/profile`），校验请求来自回环地址后返回 `{ endpoint: 'ws://127.0.0.1:9466/target', token }`。
+3. 页面在 `?profile=1` 时 `fetch('/dev/profile')` 拿到 `{ endpoint, token }`，传给 `profiler.connect({ endpoint, token })`（及通过 `postMessage` 传给同源 Worker）。WebSocket 地址保持纯路径 `ws://127.0.0.1:9466/target`，不在浏览器 Network URL 栏或访问日志中暴露令牌。
+
+## 4. Agent CLI 控制、自动数据源与查询命令
 
 ```text
-node packages/profile-tools/dist/cli.js serve --token-file .cache/profile-token --port 9466 --out artifacts/captures
-node packages/profile-tools/dist/cli.js targets --token-file .cache/profile-token
-node packages/profile-tools/dist/cli.js prepare --token-file .cache/profile-token --targets SOURCE_A,SOURCE_B --mode trace --duration 15000 --bytes 8388608 --plan .cache/plan.json
-node packages/profile-tools/dist/cli.js start --token-file .cache/profile-token --plan .cache/plan.json --request-id UNIQUE_REQUEST_ID
+# 1. 启动常驻本地协调服务（支持多个 --origin 或逗号分隔；导出后自动释放内存，可连续采任意多场）
+node packages/profile-tools/dist/cli.js serve \
+  --token-file .cache/profile-token \
+  --port 9466 \
+  --origin http://localhost:5173,http://127.0.0.1:5173 \
+  --clock-interval 1s --clock-valid-for 2500ms
+
+# 2. 查看已注册目标（--url 支持 127.0.0.1 与 localhost）
+node packages/profile-tools/dist/cli.js targets --token-file .cache/profile-token --url http://localhost:9466
+
+# 3. 准备采集（支持 15s / 500ms / 2m 时长单位、8mb 容量单位、--markers 过滤、--collectors 自动数据源、hybrid 混合模式）
+node packages/profile-tools/dist/cli.js prepare \
+  --token-file .cache/profile-token \
+  --targets SOURCE_MAIN,SOURCE_ROOM,SOURCE_PREDICT \
+  --mode hybrid \
+  --duration 15s \
+  --bytes 8mb \
+  --markers 101,102,201 \
+  --collectors raf,longtasks,loaf,gc,cpu \
+  --stats-interval 250ms \
+  --plan .cache/plan.json
+
+# 4. 开始、状态、停止、单来源失败补拉（按需）、导出
+node packages/profile-tools/dist/cli.js start --token-file .cache/profile-token --plan .cache/plan.json --request-id req-001
 node packages/profile-tools/dist/cli.js status --token-file .cache/profile-token --capture CAPTURE_ID
 node packages/profile-tools/dist/cli.js stop --token-file .cache/profile-token --capture CAPTURE_ID
+node packages/profile-tools/dist/cli.js pull --token-file .cache/profile-token --capture CAPTURE_ID
 node packages/profile-tools/dist/cli.js export --token-file .cache/profile-token --capture CAPTURE_ID
-node packages/profile-tools/dist/cli.js analyze CAPTURE_DIRECTORY --query overview
-node packages/profile-tools/dist/cli.js analyze CAPTURE_DIRECTORY --query hotspots
-node packages/profile-tools/dist/cli.js analyze CAPTURE_DIRECTORY --query queues
-node packages/profile-tools/dist/cli.js analyze CAPTURE_DIRECTORY --query operation --key SESSION/PLAYER/OPERATION
+
+# 5. 分析（在任意工作目录运行都会自动定位 LumioProfile 仓库内已下载的 Perfetto 二进制）
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query overview
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query hotspots
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query percentiles
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query frames
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query cpu-hotspots
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query runtime
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query queues
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --query operation --key SESSION/OP_KEY
+node packages/profile-tools/dist/cli.js analyze CAPTURE_DIR --sql "SELECT name, COUNT(*) AS n FROM slice GROUP BY name ORDER BY n DESC LIMIT 20;"
 ```
 
-浏览器连接时在 serve 命令增加 `--origin http://127.0.0.1:页面端口`；页面显式连接 `ws://127.0.0.1:9466/target?token=...`。工具不发现或注入未接入的页面，不开启 Node Inspector，不上传第三方。
-
-prepare 不启用采集。start 的 request-id 必须在重试时保持一致；准备凭据 30s 有效。到期停止，断连不无限延长。每来源同时只允许一场会话。普通 Trace 默认 `--overflow drop-new-detail`；希望最近窗口时明确选择 `--overflow overwrite-oldest-chunk`。Stats 用 `--mode stats`，不隐式开启 Trace。
-
-计划固定来源及其控制连接代数。targets 的 controlConnection 包含 id、registeredAt、referenceId；相同 sourceId 重新连接后会得到新的连接 id，旧计划会报告 source-generation-mismatch，不能把新实例当成旧实例继续采集。新 sourceId 或晚注册 Worker 不会自动加入计划，也不会隐式启用。
-
-断网/重建 Worker 使用明确分段：先 stop/export 第一段，保留其中 missingSources 与生命周期；再 targets/inspect，选择当前主线程、预测及权威 Worker，重新 prepare/start 第二段，用新的 request-id 和采集目录。每实例最多四场会话的限制不变；若需重启服务，宿主必须显式重建控制连接，不能假定 socket 会自动重连。
-
-status、raw.json 和 quality.json 的可选 sourceLifecycle 保存 selectedSources（sourceId、connectionId、registeredAt）与 events（kind、sourceId、connectionId、atMs、selected），并给出 referenceId、captureStartedAt、observationStoppedAt 和 droppedEvents。最多保留 128 条事件，超出计数；selected=false 表示此连接未在当前计划，注册前的 Worker 时段没有观测，不能补造端点。selected=true 只说明计划选择，不保证 start 已成功。captureStartedAt 是协调器开始派发请求之前的时间，observationStoppedAt 是结束来源收取后的时间，均不是所有来源同时启停的时刻。生命周期时间使用服务单调参考轴；只有 calibrations 中实际成功的时钟样本参与跨源映射，不能用 registeredAt/atMs 与源事件直接相减。没有该字段的历史包继续兼容。
-
-Stats 启用期间，status 返回当前计数、gauge 与直方图快照，可低频轮询查看实时统计；不会为每次聚合更新读取时间。离线 Perfetto 只保存窗口结束时的聚合快照，不伪造成逐时刻的历史曲线。
-
-stop 后工具分批取回记录并释放源端存储；export 将缓存内容保存为新目录，重复 export 返回同一目录。每个服务实例最多四场会话，导出后可重启服务，不让历史会话无限占用内存。低层直接调用 snapshot 是同步冷路径接口，大量记录应使用控制分页；停止后直接调用 release 可释放存储。
-
-导出包包含 manifest.json、raw.json、quality.json 和 traces/*.pftrace，带文件 SHA-256。分析先校验完整性，再用固定 Trace Processor 和 SQL，返回查询文本、版本、数据域、质量、原始引用和源码标记。导出目录不可覆盖；分析结果另存。
+## 5. 验证命令
 
 ```text
-node packages/profile-tools/dist/cli.js sql --query queues
+npm run verify
 ```
 
-该命令输出与 Agent 相同的 SQL，可粘贴到 Perfetto UI 的查询窗口。分别打开各 domain 的 pftrace，不能把独立文件的时间轴直接相减。缺端点、歧义关系或缺校准时使用 quality/relations 的未知说明；通用 UI 的数值不替代这些检查。
-
-## 验证命令
-
-```text
-npm run typecheck
-npm test
-npm run build
-npm run verify:optional
-npm run verify:perfetto
-npm run verify:browser
-npm run demo
-npm run benchmark
-npm run benchmark:throughput
-npm run benchmark:browser
-npm run benchmark:cpu
-```
-
-性能基准应串行执行；运行前重新 build。每次保留独立目录、源码摘要、原始样本和三态预算判定，不覆盖旧报告。可用 `-- --tag before` / `-- --tag after` 标记优化前后；负载、轮数和缓冲策略必须一致。CPU 与墙钟分别判定，Chrome 墙钟不能充当 CPU。方法、证据量要求及噪声处理见 [性能基准](benchmark-method.md)，已完成结论见 [验证报告](verification.md)。
-
-纯 C# 检查使用 `dotnet run --project tests/native/NativeBridge.Tests.csproj`；建议将 DOTNET_CLI_HOME、NUGET_PACKAGES 指向本仓 `.cache`，关闭 SDK 遥测与首次证书生成。它不代表 Unity 实测。
+或分步运行：`npm run typecheck`、`npm test`、`npm run build`、`npm run verify:optional`、`npm run verify:perfetto`、`npm run verify:browser`、`npm run demo`、`npm run verify:docs`。

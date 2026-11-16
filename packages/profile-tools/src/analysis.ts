@@ -1,7 +1,9 @@
-import type { Snapshot, RecordData } from '../../profile/src/types.ts';
+import type { Snapshot, RecordData, AutoRecordData, CpuProfileData, StatSampleData } from '../../profile/src/types.ts';
+
 export interface CalibrationSample {
   id: string; sourceId: string; clockId: string; clockEpoch: string; referenceId: string;
   a1: number; b2: number; b3: number; a4: number; precisionMs: number; maxDriftPpm: number; validForMs: number;
+  maxExtrapolationMs?: number;
 }
 /** Coordinator provenance only. These timestamps never calibrate a source clock. */
 export interface SourceLifecycle {
@@ -10,7 +12,13 @@ export interface SourceLifecycle {
   events: { kind: 'registered' | 'disconnected'; sourceId: string; connectionId: string; atMs: number; selected: boolean }[];
   droppedEvents: number;
 }
-export interface CaptureInput { sources: Snapshot[]; calibrations: CalibrationSample[]; missingSources?: string[]; sourceLifecycle?: SourceLifecycle }
+export interface CaptureInput {
+  sources: Snapshot[];
+  calibrations: CalibrationSample[];
+  missingSources?: string[];
+  sourceLifecycle?: SourceLifecycle;
+  maxExtrapolationMs?: number;
+}
 export function calibrate(s: CalibrationSample) {
   if (![s.a1, s.b2, s.b3, s.a4, s.precisionMs, s.maxDriftPpm, s.validForMs].every(Number.isFinite) || s.a4 < s.a1 || s.b3 < s.b2 || s.precisionMs < 0 || s.maxDriftPpm < 0 || s.validForMs <= 0) throw new Error('invalid-calibration');
   const offsetMinMs = s.b3 - s.a4 - 2 * s.precisionMs;
@@ -23,11 +31,36 @@ export function calibrate(s: CalibrationSample) {
     assumption: 'nonnegative-transfer; clock-continuity; host-specified-drift-bound' };
 }
 export type Mapping = ReturnType<typeof calibrate>;
-export interface EvidenceEvent extends RecordData { ref: string; streamId: string; sourceId: string; name: string; relationKind?: string; mapped?: { time: number; uncertainty: number; domain: string; mappingId: string } }
+export interface MappedTime {
+  time: number; uncertainty: number; domain: string; mappingId: string; extrapolated?: boolean;
+}
+export interface EvidenceEvent extends RecordData {
+  ref: string; streamId: string; sourceId: string; name: string; relationKind?: string; mapped?: MappedTime;
+}
+export interface AnalyzedAutoRecord extends AutoRecordData {
+  streamId: string; sourceId: string; mappedStart?: MappedTime; mappedEnd?: MappedTime;
+}
+export interface AnalyzedCpuProfile extends CpuProfileData {
+  streamId: string; sourceId: string; mappedTimestampsMs?: number[]; domain?: string;
+}
+export interface AnalyzedStatSample extends StatSampleData {
+  mappedTime?: number;
+}
+export interface DomainDiagnostic {
+  streamId: string;
+  sourceId: string;
+  domain: string;
+  shared: boolean;
+  fallbackReason?: string;
+  totalRecords: number;
+  directlyCalibratedRecords: number;
+  extrapolatedRecords: number;
+  maxUncertaintyMs: number;
+}
 export interface SpanResult {
   sourceId: string; streamId: string; spanId: number; parentSpanId?: number; markerId: number; name: string;
   operationKey?: string; begin?: EvidenceEvent; end?: EvidenceEvent; durationMs: number | null; observedSelfMs: number | null;
-  measurementKind: 'wall'; complete: boolean; evidence: string[];
+  measurementKind: 'wall' | 'async-wall'; async?: boolean; complete: boolean; evidence: string[];
 }
 export interface RelationResult {
   key: string; relation: 'explicit' | 'ambiguous' | 'missing-endpoint'; timing: string;
@@ -43,8 +76,79 @@ function validate(s: Snapshot) {
     previousSeq = e.seq; previousTime = e.time;
   }
 }
+
+const DEFAULT_MAX_EXTRAPOLATION_MS = 60_000;
+
+function mapLocalTime(
+  localTime: number,
+  sourceMappings: Mapping[],
+  anyMappingsForSource: boolean,
+  defaultMaxExtrapolationMs: number
+): { mapped?: MappedTime; reason?: string; conflict?: boolean } {
+  if (!sourceMappings.length) {
+    return { reason: anyMappingsForSource ? 'clock-epoch-mismatch' : 'no-calibration-samples' };
+  }
+  const direct: Mapping[] = [];
+  for (let i = 0; i < sourceMappings.length; i++) {
+    const c = sourceMappings[i];
+    if (localTime >= c.validFrom && localTime <= c.validTo) direct.push(c);
+  }
+  if (direct.length > 0) {
+    const reference = direct[0].referenceId;
+    let lower = -Infinity, upper = Infinity, sameRef = true;
+    for (let i = 0; i < direct.length; i++) {
+      const c = direct[i];
+      if (c.referenceId !== reference) sameRef = false;
+      const lo = localTime - c.offsetMs - c.uncertaintyMs;
+      const hi = localTime - c.offsetMs + c.uncertaintyMs;
+      if (lo > lower) lower = lo;
+      if (hi < upper) upper = hi;
+    }
+    if (upper >= lower && sameRef) {
+      return {
+        mapped: {
+          time: (lower + upper) / 2,
+          uncertainty: (upper - lower) / 2,
+          domain: reference,
+          mappingId: direct.length === 1 ? direct[0].id : direct.map(c => c.id).join(','),
+          extrapolated: false
+        }
+      };
+    }
+    return { conflict: true, reason: sameRef ? 'conflicting-clock-mappings' : 'mixed-reference-domains' };
+  }
+
+  // Nearest-sample bounded-drift extrapolation when main thread / source missed a periodic window.
+  const firstRef = sourceMappings[0].referenceId;
+  for (let i = 1; i < sourceMappings.length; i++) {
+    if (sourceMappings[i].referenceId !== firstRef) return { reason: 'mixed-reference-domains' };
+  }
+  let nearest = sourceMappings[0];
+  let bestDt = localTime < nearest.b2 ? nearest.b2 - localTime : localTime > nearest.b3 ? localTime - nearest.b3 : 0;
+  for (let i = 1; i < sourceMappings.length; i++) {
+    const c = sourceMappings[i];
+    const dt = localTime < c.b2 ? c.b2 - localTime : localTime > c.b3 ? localTime - c.b3 : 0;
+    if (dt < bestDt) { bestDt = dt; nearest = c; }
+  }
+  const maxExtrap = nearest.maxExtrapolationMs ?? defaultMaxExtrapolationMs;
+  if (bestDt > maxExtrap) {
+    return { reason: 'extrapolation-limit-exceeded' };
+  }
+  const baseHalf = (nearest.offsetMaxMs - nearest.offsetMinMs) / 2;
+  const uncertainty = baseHalf + bestDt * (nearest.maxDriftPpm / 1e6);
+  return {
+    mapped: {
+      time: localTime - nearest.offsetMs,
+      uncertainty,
+      domain: nearest.referenceId,
+      mappingId: nearest.id,
+      extrapolated: true
+    }
+  };
+}
+
 export function analyzeCapture(input: CaptureInput) {
-  if (!Array.isArray(input.sources) || input.sources.length > 64 || !Array.isArray(input.calibrations) || input.calibrations.length > 4096) throw new Error('invalid-capture');
+  if (!Array.isArray(input.sources) || input.sources.length > 64 || !Array.isArray(input.calibrations) || input.calibrations.length > 8192) throw new Error('invalid-capture');
   const unique = new Map<string, Snapshot>();
   let captureId: string | undefined;
   for (const s of input.sources) {
@@ -57,57 +161,218 @@ export function analyzeCapture(input: CaptureInput) {
   }
   const sources = [...unique.values()];
   const mappings = input.calibrations.map(calibrate);
+  const mappingsByClockKey = new Map<string, Mapping[]>();
+  const sourcesWithAnySample = new Set<string>();
+  for (const m of mappings) {
+    sourcesWithAnySample.add(m.sourceId);
+    const key = `${m.sourceId}\0${m.clockId}\0${m.clockEpoch}`;
+    let list = mappingsByClockKey.get(key);
+    if (!list) { list = []; mappingsByClockKey.set(key, list); }
+    list.push(m);
+  }
+  for (const list of mappingsByClockKey.values()) list.sort((a, b) => a.b2 - b.b2);
+
+  const defaultMaxExtrapolationMs = input.maxExtrapolationMs ?? DEFAULT_MAX_EXTRAPOLATION_MS;
   const events: EvidenceEvent[] = [];
   const spans: SpanResult[] = [];
+  const autoRecordsByStream = new Map<string, AnalyzedAutoRecord[]>();
+  const cpuProfilesByStream = new Map<string, AnalyzedCpuProfile>();
+  const statSeriesByStream = new Map<string, AnalyzedStatSample[]>();
+  const domainDiagnostics: DomainDiagnostic[] = [];
   const warnings: string[] = [];
   const incompleteStreams = new Set<string>();
+
   for (const s of sources) {
     if (s.quality.detail !== 'complete' || s.quality.tail !== 'complete' || s.quality.openSpans > 0) warnings.push(`${s.streamId}: incomplete-observation`);
     let previous = 0;
     for (const e of s.records) { if (e.seq !== previous + 1) incompleteStreams.add(s.streamId); previous = e.seq; }
     if (previous !== s.quality.lastAttemptedSeq) incompleteStreams.add(s.streamId);
     if (incompleteStreams.has(s.streamId)) warnings.push(`${s.streamId}: sequence-gaps`);
+
+    const clockKey = `${s.sourceId}\0${s.clock.id}\0${s.clock.epoch}`;
+    const sourceMappings = mappingsByClockKey.get(clockKey) ?? [];
+    const anyForSource = sourcesWithAnySample.has(s.sourceId);
     const catalog = new Map(s.markers.map(m => [m.id, m]));
     const bySpan = new Map<number, SpanResult>();
+
+    let directCount = 0, extrapolatedCount = 0, maxUncertaintyMs = 0;
+    let firstUnmappedReason: string | undefined;
+    let mappedDomain: string | undefined;
+    let domainMixed = false;
+
+    const mapPoint = (t: number, refForWarning?: string) => {
+      const res = mapLocalTime(t, sourceMappings, anyForSource, defaultMaxExtrapolationMs);
+      if (res.conflict && refForWarning) warnings.push(`${refForWarning}: conflicting-clock-mappings`);
+      if (!res.mapped && !firstUnmappedReason) firstUnmappedReason = res.reason ?? 'unmapped';
+      if (res.mapped) {
+        if (mappedDomain === undefined) mappedDomain = res.mapped.domain;
+        else if (mappedDomain !== res.mapped.domain) { domainMixed = true; firstUnmappedReason ??= 'mixed-reference-domains'; }
+        if (res.mapped.uncertainty > maxUncertaintyMs) maxUncertaintyMs = res.mapped.uncertainty;
+      }
+      return res.mapped;
+    };
+
     for (const r of s.records) {
       const m = catalog.get(r.markerId)!;
       const e: EvidenceEvent = { ...r, ref: `${s.streamId}:${r.seq}`, streamId: s.streamId, sourceId: s.sourceId, name: m.name, relationKind: m.relation };
-      const candidates = mappings.filter(c => c.sourceId === s.sourceId && c.clockId === s.clock.id && c.clockEpoch === s.clock.epoch && r.time >= c.validFrom && r.time <= c.validTo);
-      if (candidates.length) {
-        const reference = candidates[0].referenceId;
-        const lower = Math.max(...candidates.map(c => r.time - c.offsetMs - c.uncertaintyMs));
-        const upper = Math.min(...candidates.map(c => r.time - c.offsetMs + c.uncertaintyMs));
-        if (upper >= lower && candidates.every(c => c.referenceId === reference)) e.mapped = { time: (lower + upper) / 2, uncertainty: (upper - lower) / 2, domain: reference, mappingId: candidates.map(c => c.id).join(',') };
-        else warnings.push(`${e.ref}: conflicting-clock-mappings`);
+      const mapped = mapPoint(r.time, e.ref);
+      if (mapped) {
+        e.mapped = mapped;
+        if (mapped.extrapolated) extrapolatedCount++;
+        else directCount++;
       }
       events.push(e);
       if ((r.kind === 'begin' || r.kind === 'end') && r.spanId) {
         let span = bySpan.get(r.spanId);
-        if (!span) { span = { sourceId: s.sourceId, streamId: s.streamId, spanId: r.spanId, parentSpanId: r.parentSpanId, markerId: r.markerId, name: m.name, durationMs: null, observedSelfMs: null, measurementKind: 'wall', complete: false, evidence: [] }; bySpan.set(r.spanId, span); }
+        if (!span) {
+          span = {
+            sourceId: s.sourceId, streamId: s.streamId, spanId: r.spanId, parentSpanId: r.parentSpanId,
+            markerId: r.markerId, name: m.name, durationMs: null, observedSelfMs: null,
+            measurementKind: r.async ? 'async-wall' : 'wall', async: r.async || undefined, complete: false, evidence: []
+          };
+          bySpan.set(r.spanId, span);
+        }
         if (span[r.kind]) throw new Error('duplicate-span-endpoint');
         span[r.kind] = e; span.evidence.push(e.ref);
         if (r.kind === 'begin') span.operationKey = r.context?.operationKey;
       }
     }
+
+    // Also calibrate automatic collector records and CPU sample timestamps on the same clock.
+    let allAutoMapped = true;
+    if (s.autoRecords?.length) {
+      const analyzedAuto: AnalyzedAutoRecord[] = [];
+      for (const ar of s.autoRecords) {
+        if (!Number.isFinite(ar.startTime) || !Number.isFinite(ar.durationMs) || ar.durationMs < 0) continue;
+        const mappedStart = mapPoint(ar.startTime);
+        const mappedEnd = mapPoint(ar.startTime + ar.durationMs);
+        if (!mappedStart || !mappedEnd) allAutoMapped = false;
+        analyzedAuto.push({ ...ar, streamId: s.streamId, sourceId: s.sourceId, mappedStart, mappedEnd });
+      }
+      if (analyzedAuto.length) autoRecordsByStream.set(s.streamId, analyzedAuto);
+    }
+
+    if (s.cpuProfile && Array.isArray(s.cpuProfile.samples) && Array.isArray(s.cpuProfile.timestampsMs)) {
+      const mappedTimestampsMs: number[] = [];
+      let allCpuMapped = true;
+      for (let i = 0; i < s.cpuProfile.timestampsMs.length; i++) {
+        const mt = mapPoint(s.cpuProfile.timestampsMs[i]);
+        if (mt) mappedTimestampsMs.push(mt.time);
+        else { allCpuMapped = false; break; }
+      }
+      cpuProfilesByStream.set(s.streamId, {
+        ...s.cpuProfile,
+        streamId: s.streamId,
+        sourceId: s.sourceId,
+        mappedTimestampsMs: allCpuMapped ? mappedTimestampsMs : undefined,
+        domain: allCpuMapped ? mappedDomain : undefined
+      });
+      if (!allCpuMapped) allAutoMapped = false;
+    }
+
+    if (s.statSeries?.length) {
+      const series: AnalyzedStatSample[] = [];
+      for (const sample of s.statSeries) {
+        const mt = mapPoint(sample.time);
+        series.push({ ...sample, mappedTime: mt?.time });
+      }
+      statSeriesByStream.set(s.streamId, series);
+    }
+
+    // If a source has no records (e.g. stats/auto-only) but has valid calibration covering startedAt/stoppedAt, allow shared axis.
+    let shared = false;
+    if (!domainMixed && sourceMappings.length > 0) {
+      if (s.records.length > 0) {
+        shared = (directCount + extrapolatedCount === s.records.length) && allAutoMapped && mappedDomain !== undefined;
+      } else {
+        const startMapped = mapPoint(s.startedAt);
+        const stopMapped = mapPoint(s.stoppedAt);
+        shared = Boolean(startMapped && stopMapped && allAutoMapped && mappedDomain !== undefined);
+      }
+    } else if (s.records.length === 0 && sourceMappings.length === 0) {
+      firstUnmappedReason ??= anyForSource ? 'clock-epoch-mismatch' : 'no-calibration-samples';
+    }
+
+    if (extrapolatedCount > 0) {
+      warnings.push(`${s.streamId}: clock-extrapolated:${extrapolatedCount}`);
+    }
+    const chosenDomain = shared ? mappedDomain! : `local:${s.streamId}`;
+    const fallbackReason = shared ? undefined : (firstUnmappedReason ?? 'no-calibration-samples');
+    domainDiagnostics.push({
+      streamId: s.streamId,
+      sourceId: s.sourceId,
+      domain: chosenDomain,
+      shared,
+      fallbackReason,
+      totalRecords: s.records.length,
+      directlyCalibratedRecords: directCount,
+      extrapolatedRecords: extrapolatedCount,
+      maxUncertaintyMs
+    });
+
+    let completeSyncSpans = 0, zeroDurationSyncSpans = 0;
     for (const span of bySpan.values()) {
       if (span.begin && span.end && span.begin.markerId === span.end.markerId && span.end.time >= span.begin.time) {
-        span.durationMs = span.end.time - span.begin.time; span.complete = true;
+        span.durationMs = span.end.time - span.begin.time;
+        span.complete = true;
+        if (!span.async) {
+          completeSyncSpans++;
+          if (span.durationMs === 0) zeroDurationSyncSpans++;
+        }
       }
     }
-    for (const span of bySpan.values()) {
-      if (!span.complete || s.quality.detail !== 'complete' || s.quality.invalid || incompleteStreams.has(s.streamId)) continue;
-      const children = [...bySpan.values()].filter(c => c.parentSpanId === span.spanId);
-      if (children.some(c => !c.complete || c.begin!.time < span.begin!.time || c.end!.time > span.end!.time)) continue;
-      const intervals = children.map(c => [c.begin!.time, c.end!.time]).sort((a, b) => a[0] - b[0]);
-      let covered = 0, end = -Infinity;
-      for (const [a, b] of intervals) { covered += Math.max(0, b - Math.max(a, end)); end = Math.max(end, b); }
-      span.observedSelfMs = span.durationMs! - covered;
+
+    if (
+      String(s.environment?.runtime ?? '').startsWith('browser') &&
+      s.environment?.crossOriginIsolated === false &&
+      completeSyncSpans >= 10 &&
+      zeroDurationSyncSpans / completeSyncSpans >= 0.5
+    ) {
+      warnings.push(`${s.streamId}: coarse-browser-clock-unisolated (${zeroDurationSyncSpans}/${completeSyncSpans} spans measured 0ms; enable COOP/COEP headers for ~0.005ms resolution)`);
     }
-    spans.push(...bySpan.values());
+
+    // O(N) parent-child index instead of O(N^2) scanning across all spans.
+    if (s.quality.detail === 'complete' && !s.quality.invalid && !incompleteStreams.has(s.streamId)) {
+      const childrenByParent = new Map<number, SpanResult[]>();
+      for (const span of bySpan.values()) {
+        if (!span.async && span.parentSpanId !== undefined) {
+          let list = childrenByParent.get(span.parentSpanId);
+          if (!list) { list = []; childrenByParent.set(span.parentSpanId, list); }
+          list.push(span);
+        }
+      }
+      for (const span of bySpan.values()) {
+        if (!span.complete || span.async) continue;
+        const children = childrenByParent.get(span.spanId);
+        if (!children || children.length === 0) {
+          span.observedSelfMs = span.durationMs!;
+          continue;
+        }
+        let validChildren = true;
+        const pBegin = span.begin!.time, pEnd = span.end!.time;
+        for (let i = 0; i < children.length; i++) {
+          const c = children[i];
+          if (!c.complete || c.begin!.time < pBegin || c.end!.time > pEnd) { validChildren = false; break; }
+        }
+        if (!validChildren) continue;
+        const intervals = children.map(c => [c.begin!.time, c.end!.time] as const).sort((a, b) => a[0] - b[0]);
+        let covered = 0, end = -Infinity;
+        for (let i = 0; i < intervals.length; i++) {
+          const [a, b] = intervals[i];
+          covered += Math.max(0, b - Math.max(a, end));
+          if (b > end) end = b;
+        }
+        span.observedSelfMs = span.durationMs! - covered;
+      }
+    }
+    for (const span of bySpan.values()) spans.push(span);
   }
+
   const links = new Map<string, EvidenceEvent[]>();
   for (const e of events) if (e.kind === 'link' && e.correlationKey) {
-    const group = links.get(e.correlationKey) ?? []; group.push(e); links.set(e.correlationKey, group);
+    let group = links.get(e.correlationKey);
+    if (!group) { group = []; links.set(e.correlationKey, group); }
+    group.push(e);
   }
   const relations: RelationResult[] = [];
   for (const [key, endpoints] of links) {
@@ -120,13 +385,37 @@ export function analyzeCapture(input: CaptureInput) {
       if (from.relationKind === 'queue' && to.relationKind === 'queue') result.measurementKind = 'queue-wait-wall';
       if (from.streamId === to.streamId) { result.durationMs = to.time - from.time; result.uncertaintyMs = 0; result.timing = 'same-clock'; }
       else if (from.mapped && to.mapped && from.mapped.domain === to.mapped.domain) {
-        result.durationMs = to.mapped.time - from.mapped.time; result.uncertaintyMs = from.mapped.uncertainty + to.mapped.uncertainty; result.timing = 'calibrated-estimate';
+        result.durationMs = to.mapped.time - from.mapped.time;
+        result.uncertaintyMs = from.mapped.uncertainty + to.mapped.uncertainty;
+        result.timing = from.mapped.extrapolated || to.mapped.extrapolated ? 'calibrated-extrapolated' : 'calibrated-estimate';
       } else result.timing = 'unaligned';
       if (result.durationMs !== null && result.durationMs + result.uncertaintyMs! < 0) { warnings.push(`${key}: causal-clock-conflict`); result.timing = 'clock-conflict'; }
     }
     relations.push(result);
   }
-  return { version: 'lumio.analysis/1', captureId, sources, events, spans, relations, mappings, warnings,
-    missingSources: input.missingSources ?? [], populationStatistics: sources.length > 0 && incompleteStreams.size === 0 && spans.every(s => s.complete) && sources.every(s => s.quality.detail === 'complete' && s.quality.tail === 'complete' && s.quality.invalid === 0 && s.quality.openSpans === 0) && !(input.missingSources?.length),
-    measurementNotes: ['wall intervals include scheduling and unobserved work', 'observedSelfMs is relative to instrumented children, not CPU time', 'clock estimates and uncertainty intervals are conditional on configured, not independently validated, precision and drift assumptions', 'no GPU or physical-present measurement'] };
+
+  return {
+    version: 'lumio.analysis/1',
+    captureId,
+    sources,
+    events,
+    spans,
+    relations,
+    mappings,
+    domainDiagnostics,
+    autoRecordsByStream,
+    cpuProfilesByStream,
+    statSeriesByStream,
+    warnings,
+    missingSources: input.missingSources ?? [],
+    populationStatistics: sources.length > 0 && incompleteStreams.size === 0 && spans.every(s => s.complete) && sources.every(s => s.quality.detail === 'complete' && s.quality.tail === 'complete' && s.quality.invalid === 0 && s.quality.openSpans === 0) && !(input.missingSources?.length),
+    measurementNotes: [
+      'wall intervals include scheduling and unobserved work',
+      'observedSelfMs is relative to instrumented synchronous children, not CPU time',
+      'clock estimates and uncertainty intervals are conditional on configured, not independently validated, precision and drift assumptions; out-of-window events extrapolate with drift-expanded uncertainty up to maxExtrapolationMs',
+      'sampled JS/CPU frames represent statistical wall-clock stack samples, not exact thread CPU time',
+      'no GPU or physical-present measurement'
+    ]
+  };
 }
+export type AnalysisResult = ReturnType<typeof analyzeCapture>;

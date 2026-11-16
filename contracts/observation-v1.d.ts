@@ -4,6 +4,8 @@ export interface Context { operationKey?: string; entityKey?: string; tick?: num
 export interface TraceWriter {
   begin(markerId: number, context?: Context): number;
   end(scopeToken: number): void;
+  beginAsync?(markerId: number, context?: Context): number;
+  endAsync?(asyncToken: number, context?: Context): void;
   event(markerId: number, context?: Context): void;
   link(markerId: number, correlationKey: string, side: 'out' | 'in', context?: Context): void;
 }

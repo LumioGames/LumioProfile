@@ -1,6 +1,12 @@
 {
-  "name": "@lumio/profile-tools", "version": "0.1.0", "type": "module",
-  "files": ["dist", "sql"],
+  "name": "@lumio/profile-tools",
+  "version": "0.2.0",
+  "license": "MIT",
+  "type": "module",
+  "files": ["dist"],
+  "scripts": {
+    "prepack": "node ../../scripts/build.mjs"
+  },
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "bin": { "lumio-profile": "dist/cli.js" },
   "dependencies": { "protobufjs": "8.8.1", "ws": "8.22.0" },

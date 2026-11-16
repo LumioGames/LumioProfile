@@ -10,7 +10,7 @@ metadata:
 
 一个采集包带三个环境子入口，工具包与 Unity 原生包独立，已由 [ADR-003](../../decisions/ADR-003-runtime-subpaths-and-independent-tools.md) 确认。宿主无依赖契约与双层开关遵循 [ADR-002](../../decisions/ADR-002-host-contract-and-optional-injection.md)。
 
-**第一版 0.1.0 已在本仓实现，尚未发布。实际类型真值为 packages/profile/src/types.ts，支持范围见 [第一版能力](mvp-runtime.md)。本页保留完整契约方向，超出第一版范围的能力仍是设计。** 三端示例见 [接入使用指引](../standards/integration-guide.md)，控制与分析见 [Agent 流程](agent-capture-analysis.md)。
+**当前仓库已实现 0.2.0（`npm ci` 自动构建 `dist/`）。实际类型真值为 `packages/profile/src/types.ts`，逐项「已实现 / 未实现」矩阵见 [当前运行能力](mvp-runtime.md)。本页保留完整契约方向，超出已实现矩阵的部分（如 MCP 目录、Unity 原生 Profiler 采样与 GPU 计时）仍为未实现设计。** 三端示例见 [当前运行指引](../standards/mvp-usage.md) 与 [接入使用指引](../standards/integration-guide.md)，控制与分析见 [Agent 流程](agent-capture-analysis.md)。
 
 记录编码、原始时钟、实例与事件身份、缓冲和 Perfetto 映射见 [采集协议](capture-protocol.md)。本页的观测方法不要求调用方自行生成采集身份、进行时钟校准或处理批次重传。
 
@@ -104,10 +104,10 @@ export const profileHost: ProfileHost = {
 ### 写入与区间语义
 
 - 所有写入方法同步、有界，不等待上传；非法记录、容量不足或关闭后写入在诊断侧处理，不能向玩法抛出诊断异常。
-- `begin/end` 只表示同执行上下文的同步区间，不跨 await、yield 或线程。未开始记录时 `begin` 返回保留值 `0`，`end(0)` 安全忽略。
-- 令牌属于原 writer 和采集会话；正常或异常退出均使用原 writer 结束。结束区间不等于业务成功，业务结果需要实际事件证据。调用方不能根据记录成功与否决定玩法分支。
+- `begin/end` 表示同执行上下文的同步区间（已实现，且内层漏 `end` 时自动弹出未闭合内层并标 `partial`）；可选 `beginAsync/endAsync` 表示允许重叠或跨 `await` 的异步墙钟区间（已实现，独立泳道展示，不扣减同步 `observedSelfMs`）。未开始记录时均返回保留值 `0`，`end(0)` / `endAsync(0)` 安全忽略。
+- 令牌高位编码会话代次（已实现）；无论调用方保存原 writer 还是结束时重读 `profileHost.trace`，上一场迟到结束均被安全忽略且不会误关新会话区间或污染新会话质量。结束区间不等于业务成功，业务结果需要实际事件证据。
 - `event` 记录一个实际观察点；`link` 同时记录一个带标记和时间的因果端点，`out/in` 不能被解释为同步父子调用，也不能自动解释成网络单程延迟。
-- 停止先撤销新写入入口，原区间按原会话有界收尾。关闭后的旧 writer 安全拒绝迟到结束，报告丢弃或未闭合信息，不把它写入新会话。
+- 停止立即撤销写入槽位（当前已实现：收尾宽限固定为 `0ms`，未闭合区间如实记入 `openSpans`；大于 0 的延长收尾宽限未实现）。关闭后的旧 writer 或旧代次令牌安全忽略迟到结束，绝不写入新会话。
 
 ### 关联身份与字段
 

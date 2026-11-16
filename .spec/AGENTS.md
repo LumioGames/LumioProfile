@@ -30,4 +30,4 @@ LumioProfile 是独立的可选性能分析插件仓库。第一版已实现一�
 
 ## 文档核验
 
-使用已安装 Workflow 插件提供的 `spec-lint` 检查结构、frontmatter、导航和相对链接。检查结果只代表文档结构，不能证明插件能力或性能已实现。
+本仓内置 `npm run verify:docs` 检查所有 Markdown 文档的 YAML frontmatter 与相对链接完整性（若本地装有外部 Workflow 插件，也可配合其 `spec-lint` 使用）。文档检查结果只代表文档结构，不能证明插件能力或性能已实现。

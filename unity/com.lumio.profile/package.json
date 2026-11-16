@@ -1,6 +1,7 @@
 {
   "name": "com.lumio.profile",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "license": "MIT",
   "displayName": "Lumio Profile Native Bridge",
   "description": "Optional clock and bounded main-thread scheduler bridge. Unity/PuerTS runtime validation is not yet performed.",
   "unity": "2021.3"

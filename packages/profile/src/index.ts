@@ -1,2 +1,3 @@
 export type * from './types.ts';
-export { createProfiler } from './core.ts';
+export { createProfiler, mergeMarkers } from './core.ts';
+export { websocketChannel, messagePortChannel, connect } from './transport.ts';
